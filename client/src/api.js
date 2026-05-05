@@ -1,5 +1,5 @@
- // src/api.js
-const BASE = '/api';
+// src/api.js
+const BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
 function getToken() {
   return localStorage.getItem('diary_token');
@@ -16,17 +16,14 @@ function authHeaders() {
 async function request(path, options = {}) {
   const url = `${BASE}${path}`;
   
-  // --- 侦探日志：在这里打印出请求地址 ---
   console.log(`[API 侦探] 发起请求: ${options.method || 'GET'} ${url}`);
-  // ------------------------------------
-
+  
   const res = await fetch(url, {
     ...options,
     headers: { ...authHeaders(), ...options.headers },
   });
 
-  const data = await res.json();
-  
+  const data = await res.json();  
   if (!res.ok) {
     console.error(`[API 错误] ${url} 失败:`, data);
     throw new Error(data.error || '请求失败');
@@ -48,12 +45,11 @@ export const api = {
     request(`/notes/${id}`, { method: 'PUT', body: JSON.stringify({ title, content }) }),
   deleteNote: (id) =>
     request(`/notes/${id}`, { method: 'DELETE' }),
-  // 日程接口
-getTodos: () => request('/todos'),
-createTodo: (title = '', due_date = null) =>
-  request('/todos', { method: 'POST', body: JSON.stringify({ title, due_date }) }),
-updateTodo: (id, data) =>
-  request(`/todos/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-deleteTodo: (id) =>
-  request(`/todos/${id}`, { method: 'DELETE' }),
+  getTodos: () => request('/todos'),
+  createTodo: (title = '', due_date = null) =>
+    request('/todos', { method: 'POST', body: JSON.stringify({ title, due_date }) }),
+  updateTodo: (id, data) =>
+    request(`/todos/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteTodo: (id) =>
+    request(`/todos/${id}`, { method: 'DELETE' }),
 };

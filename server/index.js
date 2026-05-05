@@ -10,14 +10,28 @@ const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'diary_app_secret_key_2024';
 const DB_PATH = path.join(__dirname, 'database.json');
 
-// ─── Middleware ────────────────────────────────────────────────────────────────
-app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
+// ─── CORS（允许前端访问）─────────────────────────────────
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://diary-app-beige-rho.vercel.app',
+];
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, false);
+    }
+  },
+  credentials: true,
+}));
+
 app.use(express.json());
 
-// ─── JSON 文件数据库 ────────────────────────────────────────────────────────────
+// ─── JSON 文件数据库 ───────────────────────────────────────
 function readDB() {
   if (!fs.existsSync(DB_PATH)) {
-    const init = { users: [], notes: [] };
+    const init = { users: [], notes: [], todos: [] };
     fs.writeFileSync(DB_PATH, JSON.stringify(init, null, 2), 'utf-8');
     return init;
   }
@@ -38,7 +52,7 @@ function now() {
 
 console.log('✅ JSON 数据库路径:', DB_PATH);
 
-// ─── Auth Middleware ───────────────────────────────────────────────────────────
+// ─── Auth Middleware ───────────────────────────────────────
 function authenticate(req, res, next) {
   const token = (req.headers['authorization'] || '').split(' ')[1];
   if (!token) return res.status(401).json({ error: '未登录，请先登录' });
@@ -52,7 +66,7 @@ function authenticate(req, res, next) {
   }
 }
 
-// ─── 注册 ──────────────────────────────────────────────────────────────────────
+// ─── 注册 ──────────────────────────────────────────────────
 app.post('/api/auth/register', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password)
@@ -75,7 +89,7 @@ app.post('/api/auth/register', (req, res) => {
   res.status(201).json({ token, username });
 });
 
-// ─── 登录 ──────────────────────────────────────────────────────────────────────
+// ─── 登录 ──────────────────────────────────────────────────
 app.post('/api/auth/login', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password)
@@ -90,7 +104,7 @@ app.post('/api/auth/login', (req, res) => {
   res.json({ token, username: user.username });
 });
 
-// ─── 获取日记列表 ───────────────────────────────────────────────────────────────
+// ─── 获取日记列表 ──────────────────────────────────────────
 app.get('/api/notes', authenticate, (req, res) => {
   const db = readDB();
   const notes = db.notes
@@ -100,7 +114,7 @@ app.get('/api/notes', authenticate, (req, res) => {
   res.json(notes);
 });
 
-// ─── 创建日记 ───────────────────────────────────────────────────────────────────
+// ─── 创建日记 ──────────────────────────────────────────────
 app.post('/api/notes', authenticate, (req, res) => {
   const { title = '', content = '' } = req.body;
   const db = readDB();
@@ -111,7 +125,7 @@ app.post('/api/notes', authenticate, (req, res) => {
   res.status(201).json(note);
 });
 
-// ─── 获取单篇日记 ───────────────────────────────────────────────────────────────
+// ─── 获取单篇日记 ─────────────────────────────────────────
 app.get('/api/notes/:id', authenticate, (req, res) => {
   const db = readDB();
   const note = db.notes.find(n => n.id === Number(req.params.id) && n.user_id === req.userId);
@@ -119,7 +133,7 @@ app.get('/api/notes/:id', authenticate, (req, res) => {
   res.json(note);
 });
 
-// ─── 更新日记 ───────────────────────────────────────────────────────────────────
+// ─── 更新日记 ──────────────────────────────────────────────
 app.put('/api/notes/:id', authenticate, (req, res) => {
   const { title, content } = req.body;
   const db = readDB();
@@ -131,7 +145,7 @@ app.put('/api/notes/:id', authenticate, (req, res) => {
   res.json(db.notes[idx]);
 });
 
-// ─── 删除日记 ───────────────────────────────────────────────────────────────────
+// ─── 删除日记 ──────────────────────────────────────────────
 app.delete('/api/notes/:id', authenticate, (req, res) => {
   const db = readDB();
   const idx = db.notes.findIndex(n => n.id === Number(req.params.id) && n.user_id === req.userId);
@@ -141,14 +155,7 @@ app.delete('/api/notes/:id', authenticate, (req, res) => {
   res.json({ success: true });
 });
 
-
-// ─── 健康检查 ───────────────────────────────────────────────────────────────────
-app.get('/api/health', (req, res) => res.json({ status: 'ok', time: now() }));
-
-// ─── 启动 ───────────────────────────────────────────────────────────────────────
-app.listen(PORT, () => {
-  // ─── 日程 CRUD ─────────────────────────────────────────────────────────────────
-// 获取所有日程
+// ─── 日程：获取所有 ────────────────────────────────────────
 app.get('/api/todos', authenticate, (req, res) => {
   const db = readDB();
   if (!db.todos) db.todos = [];
@@ -158,7 +165,7 @@ app.get('/api/todos', authenticate, (req, res) => {
   res.json(todos);
 });
 
-// 创建日程
+// ─── 日程：创建 ────────────────────────────────────────────
 app.post('/api/todos', authenticate, (req, res) => {
   const { title, due_date } = req.body;
   const db = readDB();
@@ -177,7 +184,7 @@ app.post('/api/todos', authenticate, (req, res) => {
   res.status(201).json(todo);
 });
 
-// 更新日程（切换完成状态、修改标题等）
+// ─── 日程：更新 ────────────────────────────────────────────
 app.put('/api/todos/:id', authenticate, (req, res) => {
   const { title, completed, due_date } = req.body;
   const db = readDB();
@@ -193,7 +200,7 @@ app.put('/api/todos/:id', authenticate, (req, res) => {
   res.json(db.todos[idx]);
 });
 
-// 删除日程
+// ─── 日程：删除 ────────────────────────────────────────────
 app.delete('/api/todos/:id', authenticate, (req, res) => {
   const db = readDB();
   if (!db.todos) db.todos = [];
@@ -203,5 +210,11 @@ app.delete('/api/todos/:id', authenticate, (req, res) => {
   writeDB(db);
   res.json({ success: true });
 });
+
+// ─── 健康检查 ──────────────────────────────────────────────
+app.get('/api/health', (req, res) => res.json({ status: 'ok', time: now() }));
+
+// ─── 启动 ──────────────────────────────────────────────────
+app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
 });
