@@ -1,13 +1,11 @@
 import React from 'react';
 import { SettingsProvider, useSettings } from './context/SettingsContext';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import DiaryPage from './pages/DiaryPage';
+import AuthPage from './pages/AuthPage';
 
 const ThemeWrapper = ({ children }) => {
   const { theme } = useSettings();
-  
-  // 调试：每次颜色变化时控制台会打印
-  console.log('🎨 当前主题颜色:', theme?.color);
   
   return (
     <div 
@@ -19,12 +17,28 @@ const ThemeWrapper = ({ children }) => {
   );
 };
 
+function MainApp() {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return <div className="h-screen bg-cream-50 flex items-center justify-center">
+      <p className="text-ink-muted">加载中...</p>
+    </div>;
+  }
+  
+  if (!user) {
+    return <AuthPage />;
+  }
+  
+  return <DiaryPage />;
+}
+
 function App() {
   return (
     <AuthProvider>
       <SettingsProvider>
         <ThemeWrapper>
-          <DiaryPage />
+          <MainApp />
         </ThemeWrapper>
       </SettingsProvider>
     </AuthProvider>
