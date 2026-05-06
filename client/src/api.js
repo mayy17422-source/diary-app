@@ -1,5 +1,5 @@
 // src/api.js
-const BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+const BASE = (import.meta.env.VITE_API_BASE_URL || '') + '/api';
 
 function getToken() {
   return localStorage.getItem('diary_token');
